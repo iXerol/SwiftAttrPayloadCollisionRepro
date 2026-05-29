@@ -77,3 +77,14 @@ This package checks both declaration orders:
   `@Sendable`. The Swift witness uses only `@Sendable`.
 
 Both directions matter because the historical failure was order-dependent.
+
+The second protocol requirement is intentionally optional. Making it required can
+also expose the same imported type mismatch on affected toolchains, but Swift may
+also import a required completion-handler method as an additional `async`
+requirement. Keeping the method optional preserves the focused user-visible
+failure mode: `nearly matches optional requirement`.
+
+The Swift witnesses intentionally omit `@escaping`. Many real completion-handler
+APIs do escape, and adding `@escaping` still reproduces the bug, but escaping is
+not part of the `swift_attr` payload collision. Omitting it keeps the diagnostic
+focused on the imported `@MainActor` / `@Sendable` mismatch.
