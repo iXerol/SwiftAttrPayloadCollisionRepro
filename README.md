@@ -23,6 +23,19 @@ A fixed toolchain should build successfully.
 An affected toolchain fails with `nearly matches optional requirement` promoted
 to an error by `-warnings-as-errors`.
 
+The SDK-shaped ProcessInfo/WebKit case is all Swift and should be checked with
+an iOS Simulator release build:
+
+```bash
+SDK="$(xcrun --sdk iphonesimulator --show-sdk-path)"
+swift build -c release --target ProcessInfoWebKitWitness \
+  --triple arm64-apple-ios18.0-simulator \
+  --sdk "$SDK"
+```
+
+This keeps the repro package toolchain-local while using the selected Xcode's
+real Foundation and WebKit SDK modules.
+
 ## Known Affected and Fixed Releases
 
 Known affected public release:
@@ -69,7 +82,7 @@ Historically, `SwiftAttr` was a single Clang attribute kind and the
 same-shaped block types with different Swift attributes could collide. The
 payload created first won.
 
-This package checks both declaration orders:
+The generic repro checks both declaration orders:
 
 - `SendableFirstAPI` creates `@Sendable` first, then an optional requirement
   using `@UIActor`. The Swift witness uses `@MainActor @Sendable`.
@@ -78,13 +91,27 @@ This package checks both declaration orders:
 
 Both directions matter because the historical failure was order-dependent.
 
+`ProcessInfoWebKitWitness` is the SDK-shaped case. It is all Swift:
+
+- `ProcessInfoSeed.swift` imports Foundation and calls
+  `ProcessInfo.processInfo.performExpiringActivity(withReason:using:)`.
+- `ProcessInfoWebKitWitness.swift` imports Foundation and WebKit, then provides
+  the `WKUIDelegate.webView(_:runJavaScriptConfirmPanelWithMessage:initiatedByFrame:completionHandler:)`
+  witness.
+
+On an affected toolchain, an iOS Simulator release build compiles the
+ProcessInfo file first under whole-module optimization. That can make WebKit's
+optional requirement lose the `@MainActor` part of the imported completion
+handler type, producing the `nearly matches optional requirement` diagnostic.
+
 The second protocol requirement is intentionally optional. Making it required can
 also expose the same imported type mismatch on affected toolchains, but Swift may
 also import a required completion-handler method as an additional `async`
 requirement. Keeping the method optional preserves the focused user-visible
 failure mode: `nearly matches optional requirement`.
 
-The Swift witnesses intentionally omit `@escaping`. Many real completion-handler
-APIs do escape, and adding `@escaping` still reproduces the bug, but escaping is
-not part of the `swift_attr` payload collision. Omitting it keeps the diagnostic
-focused on the imported `@MainActor` / `@Sendable` mismatch.
+The generic Swift witnesses intentionally omit `@escaping`. Many real
+completion-handler APIs do escape, and adding `@escaping` still reproduces the
+bug, but escaping is not part of the `swift_attr` payload collision. Omitting it
+keeps the generic diagnostic focused on the imported `@MainActor` / `@Sendable`
+mismatch.

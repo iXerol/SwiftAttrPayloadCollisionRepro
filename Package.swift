@@ -14,6 +14,7 @@ let package = Package(
   products: [
     .library(name: "SendableFirstWitness", targets: ["SendableFirstWitness"]),
     .library(name: "UIActorFirstWitness", targets: ["UIActorFirstWitness"]),
+    .library(name: "ProcessInfoWebKitWitness", targets: ["ProcessInfoWebKitWitness"]),
   ],
   targets: [
     .target(name: "SendableFirstAPI", publicHeadersPath: "include"),
@@ -25,6 +26,10 @@ let package = Package(
     .target(
       name: "UIActorFirstWitness",
       dependencies: ["UIActorFirstAPI"],
+      swiftSettings: reproSwiftSettings),
+    .target(
+      name: "ProcessInfoWebKitWitness",
+      dependencies: [],
       swiftSettings: reproSwiftSettings),
   ],
   swiftLanguageModes: [.v6]
